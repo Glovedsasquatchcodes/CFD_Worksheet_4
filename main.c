@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "string.h"
+#include "adapters/c/SolverInterfaceC.h"
 
 
 /**
@@ -86,10 +87,17 @@ int main(int argc, char* argv[]){
 			double T_h;
 			double T_c;
 			double beta;
+			double x_origin;
+		        double y_origin;
+		        char *geometry;
+		        char *precice_config;
+		        char *participant_name;
+		        char *mesh_name;
+		        char *read_data_name;
+		        char *write_data_name;
 
 			//Read and assign the parameter values from file
-			read_parameters(filename, &imax, &jmax, &xlength, &ylength, &dt, &t_end, &tau, &dt_value, &eps, &omg, &alpha, &itermax,&GX, &GY, &Re, &Pr, &UI, &VI, &PI, &TI, &T_h, &T_c,  
-					&beta, &dx, &dy, geometry);
+			read_parameters(filename, &imax, &jmax, &xlength, &ylength, &dt, &t_end, &tau, &dt_value, &eps, &omg, &alpha, &itermax,&GX, &GY, &Re, &Pr, &UI, &VI, &PI, &TI, &T_h, &T_c, &beta, &dx, &dy, &x_origin, &y_origin, geometry, precice_config, participant_name, mesh_name, read_data_name, write_data_name);
 
 			//temperature =1 => Flag for heat transfer problems to include temperature equations for solving
 			int temperature = 1;
@@ -139,12 +147,38 @@ int main(int argc, char* argv[]){
 			// Algorithm starts from here
 			printf("Alogrithm started........\n");
 			double t=0; int n=0; int n1=0;
-			    
-			while (t < t_end) {
+
+			// initialize preCICE
+			precicec_createSolverInterface(participant_name, precice_config, 0, 1);
+			int dim = precicec_getDimensions();
+			
+			// define coupling mesh
+			int meshID = precicec_getMeshID(mesh_name);
+			int num_coupling_cells = num_coupling(geometry,imax,jmax);//determine no. of coupling cells 					
+    			int* vertexIDs = precice_set_interface_vertices(imax,jmax, dx, dy, x_origin, y_origin, num_coupling_cells, meshID, flag); // get coupling cell ids
+
+			// define Dirichlet part of coupling written by this solver
+			int temperatureID = precicec_getDataID(write_data_name, meshID);
+			double* temperatureCoupled = (double*) malloc(sizeof(double) * num_coupling_cells);
+
+			// define Neumann part of coupling read by this solver
+			int heatFluxID = precicec_getDataID(read_data_name, meshID);
+			double* heatfluxCoupled = (double*) malloc(sizeof(double) * num_coupling_cells);
+				
+			// call precicec_initialize()
+			double precice_dt = precicec_initialize();
+
+			// initialize data at coupling interface
+			precice_write_temperature(imax,jmax,num_coupling_cells,temperatureCoupled,vertexIDs,temperatureID,T,flag); 
+			precicec_initialize_data(); // synchronize with OpenFOAM
+			precicec_readBlockScalarData(heatFluxID, vertexSize, vertexIDs, heatfluxCoupled);//read heatfluxCoupled		
+
+			while (precicec_isCouplingOngoing()) {
 	
 				calculate_dt(Re,tau,&dt,dx,dy,imax,jmax, U, V, Pr, temperature);
-				printf("t = %f ,dt = %f, ",t,dt);
-							
+				dt = min(solver_dt, precice_dt);
+
+				set_coupling_boundary();							
 				boundaryvalues(imax, jmax, U, V, flag);
 
 				if(temperature){
@@ -174,11 +208,13 @@ int main(int argc, char* argv[]){
 
 
 				calculate_uv(dt,dx,dy,imax,jmax,U,V,F,G,P,flag);
-
+			
+				precice_write_temperature(imax,jmax,num_coupling_cells,temperatureCoupled,vertexIDs,temperatureID,T, flag);
+				precice_dt = precicec_advance(dt); // advance coupling
+				precicec_readBlockScalarData(heatFluxID, vertexSize, vertexIDs, heatfluxCoupled);
 
 				reset_obstacles(U, V, P, T, flag, imax, jmax,temperature);
 	
-
 				if ((t >= n1*dt_value)&&(t!=0.0)){
 					write_vtkFile(sol_directory ,n ,xlength ,ylength ,imax-2 ,jmax-2,dx ,dy ,U ,V ,P,T,temperature);
 					printf("Writing Solutions at %f seconds in the file \n",n1*dt_value);
@@ -210,4 +246,3 @@ int main(int argc, char* argv[]){
 			return -1;
     
 }
-
