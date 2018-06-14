@@ -3,36 +3,159 @@
 
 int *precice_set_interface_vertices(int imax, int jmax, double dx, double dy, double x_origin, double y_origin,
                                     int num_coupling_cells, int meshID, int **FLAG){
-	double *coords = (double *) malloc(num_coupling_cells * sizeof(int));
-	count = 0;
+	int dimension   = precice.getDimension();
+    int getMeshID   = precice.getMeshID("FluidMesh");
+    int* vertexIDs  = new int[num_coupling_cells];
+
+
+    /* -------------------------CASE 1 (APPROACH 1) BEGINS------------------------------ */
+	double* vertices = new double[num_coupling_cells*dimension];
+
+    double* coords = new double[dimension];
+
+    int coupledcellcount = 0;
 	for(int j=0; j<=jmax; j++){ //left boundary
 		if(flag[i][j]&(1<<4)){
-			precice.setMeshVertices(meshID, num_coupling_cells, coords, vertexIDs);
-			count++;
+            vertices[dimension*coupledcellcount]     = x_origin + (0 - 0.5)*dx;
+            vertices[dimension*coupledcellcount + 1] = y_origin + (j - 0.5)*dy;
+			vertices[dimension*coupledcellcount + 2] = 0;
+            coords = (vertices + dimension*coupledcellcount);
+
+			precice.setMeshVertices(meshID, num_coupling_cells, coords, (vertexIDs + coupledcellcount));
+			coupledcellcount++;
 		}
 		
 	}
 	for(int j=0; j<=jmax; j++){ //Right boundary
 		if(flag[i][j]&(1<<4)){
-			precice.setMeshVertices(meshID, num_coupling_cells, coords, vertexIDs);
-			count++;
+            vertices[dimension*coupledcellcount]     = x_origin + (imax - 0.5)*dx;
+            vertices[dimension*coupledcellcount + 1] = y_origin + (j - 0.5)*dy;
+			vertices[dimension*coupledcellcount + 2] = 0;
+            coords = (vertices + dimension*coupledcellcount);
+
+			precice.setMeshVertices(meshID, num_coupling_cells, coords, (vertexIDs + coupledcellcount));
+			coupledcellcount++;
 		}
 		
 	}
 	for(int i=0; i<=imax; i++){ //Top boundary
 		if(flag[i][j]&(1<<4)){
-			precice.setMeshVertices(meshID, num_coupling_cells, coords, vertexIDs);
-			count++;
+            vertices[dimension*coupledcellcount]     = x_origin + (i - 0.5)*dx;
+            vertices[dimension*coupledcellcount + 1] = y_origin + (jmax - 0.5)*dy;
+			vertices[dimension*coupledcellcount + 2] = 0;
+            coords = (vertices + dimension*coupledcellcount);
+
+			precice.setMeshVertices(meshID, num_coupling_cells, coords, (vertexIDs + coupledcellcount));
+			coupledcellcount++;
 		}
 		
 	}
-	for(int j=0; j<=jmax; j++){ //Bottom boundary
+	for(int i=0; i<=imax; i++){ //Bottom boundary
 		if(flag[i][j]&(1<<4)){
-			precice.setMeshVertices(meshID, num_coupling_cells, coords, vertexIDs);
-			count++;
+            vertices[dimension*coupledcellcount]     = x_origin + (i - 0.5)*dx;
+            vertices[dimension*coupledcellcount + 1] = y_origin + (0 - 0.5)*dy;
+			vertices[dimension*coupledcellcount + 2] = 0;;
+            coords = (vertices + dimension*coupledcellcount);
+
+			precice.setMeshVertices(meshID, num_coupling_cells, coords, (vertexIDs + coupledcellcount));
+			coupledcellcount++;
 		}
 		
 	}
+	/* -------------------------CASE 1 (APPROACH 1) ENDS------------------------------ */
+
+
+
+    /* -------------------------CASE 1 (APPROACH 2) BEGINS------------------------------ */
+	double* vertices = new double[num_coupling_cells*dimension];
+
+    int coupledcellcount = 0;
+	for(int j=0; j<=jmax; j++){ //left boundary
+		if(flag[i][j]&(1<<4)){
+            vertices[dimension*coupledcellcount]     = x_origin + (0 - 0.5)*dx;
+            vertices[dimension*coupledcellcount + 1] = y_origin + (j - 0.5)*dy;
+			vertices[dimension*coupledcellcount + 2] = 0;
+            coupledcellcount++;
+		}
+		
+	}
+	for(int j=0; j<=jmax; j++){ //Right boundary
+		if(flag[i][j]&(1<<4)){
+            vertices[dimension*coupledcellcount]     = x_origin + (imax - 0.5)*dx;
+            vertices[dimension*coupledcellcount + 1] = y_origin + (j - 0.5)*dy;
+			vertices[dimension*coupledcellcount + 2] = 0;
+			coupledcellcount++;
+		}
+		
+	}
+	for(int i=0; i<=imax; i++){ //Top boundary
+		if(flag[i][j]&(1<<4)){
+            vertices[dimension*coupledcellcount]     = x_origin + (i - 0.5)*dx;
+            vertices[dimension*coupledcellcount + 1] = y_origin + (jmax - 0.5)*dy;
+			vertices[dimension*coupledcellcount + 2] = 0;
+			coupledcellcount++;
+		}
+		
+	}
+	for(int i=0; i<=imax; i++){ //Bottom boundary
+		if(flag[i][j]&(1<<4)){
+            vertices[dimension*coupledcellcount]     = x_origin + (i - 0.5)*dx;
+            vertices[dimension*coupledcellcount + 1] = y_origin + (0 - 0.5)*dy;;
+			vertices[dimension*coupledcellcount + 2] = 0;
+			coupledcellcount++;
+		}
+		
+	}
+	precice.setMeshVertices(meshID, num_coupling_cells, vertices, vertexIDs);
+	/* -------------------------CASE 1 (APPROACH 1) ENDS------------------------------ */
+
+
+    /* -------------------CASE 2 GENERALIZED SCAN (APPROACH 1) BEGINS--------------------- */
+    double* vertices = new double[num_coupling_cells*dimension];
+
+    double* coords = new double[dimension];
+
+    int coupledcellcount = 0;
+	for(int i = 0; i<=imax; i++){
+		for(int j=0; j<=jmax; j++){ 
+			
+			/* scanning from bottom to top, left to right */
+			if(flag[i][j]&(1<<9 && (B_N(flag[i][j]) | B_S(flag[i][j])))){
+				vertices[dimension*coupledcellcount]     = x_origin + (i - 0.5)*dx;
+				vertices[dimension*coupledcellcount + 1] = y_origin + (j - 0.5)*dy;
+				vertices[dimension*coupledcellcount + 2] = 0;
+				coords = (vertices + dimension*coupledcellcount);
+
+				precice.setMeshVertices(meshID, num_coupling_cells, coords, (vertexIDs + coupledcellcount));
+				coupledcellcount++;
+			}
+
+		}
+	}
+    /* -------------------CASE 2 GENERALIZED SCAN (APPROACH 1) BEGINS--------------------- */
+
+
+	/* -------------------CASE 2 GENERALIZED SCAN (APPROACH 2) BEGINS--------------------- */
+    double* vertices = new double[num_coupling_cells*dimension];
+
+    int coupledcellcount = 0;
+	for(int i = 0; i<=imax; i++){
+		for(int j=0; j<=jmax; j++){ 
+			
+			/* scanning from bottom to top, left to right */
+			if(flag[i][j]&(1<<9 && (B_N(flag[i][j]) | B_S(flag[i][j])))){
+				vertices[dimension*coupledcellcount]     = x_origin + (i - 0.5)*dx;
+				vertices[dimension*coupledcellcount + 1] = y_origin + (j - 0.5)*dy;
+				vertices[dimension*coupledcellcount + 2] = 0;
+
+				coupledcellcount++;
+			}
+
+		}
+	}
+	precice.setMeshVertices(meshID, num_coupling_cells, vertices, vertexIDs);
+				
+    /* -------------------CASE 2 GENERALIZED SCAN (APPROACH 2) BEGINS--------------------- */
 	free(coords);
 	return vertexIDs;
 	
