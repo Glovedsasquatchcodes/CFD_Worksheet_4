@@ -62,8 +62,15 @@ void read_parameters( const char *szFileName,       /* name of the file */
 		    double *T_c,
 		    double *beta,
 		    double *dx,                /* length of a cell x-dir. */
-                    double *dy,               /* length of a cell y-dir. */
-            	    char *geometry                    		                               /* for pressure per time step */
+		    double *dy,               /* length of a cell y-dir. */
+		    double *x_origin,
+		    double *y_origin,
+		    char *geometry,
+		    char *precice_config,
+		    char *participant_name,
+		    char *mesh_name,
+		    char *read_data_name,
+		    char *write_data_name
 
 );
 
@@ -95,6 +102,7 @@ void forbid_assert(int imax, int jmax, int **pic);
 
 void init_flag(char* geometry, int imax, int jmax, int **flag);
 
+int num_coupling( char* geometry, int imax, int jmax);
+
 
 #endif
-
