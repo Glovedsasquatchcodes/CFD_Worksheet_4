@@ -1,7 +1,8 @@
 #include "precice_adapter.h"
 #include "boundary_val.h"
 
-int *precice_set_interface_vertices(int imax, int jmax, double dx, double dy, double x_origin, double y_origin,
+int *precice_set_interface_vertices(int imax, int jmax, 
+									double dx, double dy, double x_origin, double y_origin,
                                     int num_coupling_cells, int meshID, int **FLAG){
 	int dimension   = precice.getDimension();
     int getMeshID   = precice.getMeshID("FluidMesh");
@@ -161,32 +162,33 @@ int *precice_set_interface_vertices(int imax, int jmax, double dx, double dy, do
 	
 }
 
-void precice_write_temperature(int imax, int jmax, int num_coupling_cells, double *temperature, int *vertexIDs,
-                               int temperatureID, double **TEMP, int **FLAG)
+void precice_write_temperature(	int imax, int jmax, int num_coupling_cells, 
+								double *temperature, int *vertexIDs,
+                               	int temperatureID, double **TEMP, int **FLAG)
 {
 	count = 0;
-	for(int j=0; j<=jmax; j++){ //left boundary
+	for(int j=0; j<jmax; j++){ //left boundary
 		if(flag[i][j]&(1<<4)){
 			temperature[count] = TEMP[1][j];
 			count++;
 		}
 		
 	}
-	for(int j=0; j<=jmax; j++){ //Right boundary
+	for(int j=0; j<jmax; j++){ //Right boundary
 		if(flag[i][j]&(1<<4)){
-			temperature[count] = TEMP[imax][j];
+			temperature[count] = TEMP[imax-2][j];
 			count++;
 		}
 		
 	}
-	for(int i=0; i<=imax; i++){ //Top boundary
+	for(int i=0; i<imax; i++){ //Top boundary
 		if(flag[i][j]&(1<<4)){
-			temperature[count] = TEMP[i][jmax];
+			temperature[count] = TEMP[i][jmax-2];
 			count++;
 		}
 		
 	}
-	for(int j=0; j<=jmax; j++){ //Bottom boundary
+	for(int j=0; j<jmax; j++){ //Bottom boundary
 		if(flag[i][j]&(1<<4)){
 			temperature[count] = TEMP[i][1];
 			count++;
@@ -194,41 +196,109 @@ void precice_write_temperature(int imax, int jmax, int num_coupling_cells, doubl
 		
 	}
 
-	//precice.writeBlockScalarData(temperatureID, num_coupling_cells, vertexIDs, temperature);  shift this to main
+	
+ 	/* -------------------GENERALIZED CASE: preCICE TEMPERATURE is set according to the North and South cells --------------------- */
+	count = 0;
+	for(int i = 0; i<imax; i++){
+		for(int j=0; j<jmax; j++){ 
+
+			
+			/* Setting preCICE temperature if there is fluid to the north of the coupling cell */
+			if(flag[i][j]&(1<<9 && (B_N(flag[i][j])))){
+				temperature[count] = TEMP[i][j+1];
+				count++;
+			}
+			/* Setting preCICE temperature if there is fluid to the south of the coupling cell */
+			if(flag[i][j]&(1<<9 && (B_S(flag[i][j])))){
+				temperature[count] = TEMP[i][j-1];
+				count++;
+			}
+
+		}
+	}
+	precice.writeBlockScalarData(temperatureID, num_coupling_cells, vertexIDs, temperature);
 }
 
-void set_coupling_boundary(int imax, int jmax, double dx, double dy, double *heatflux, double **TEMP, int **FLAG)
+void set_coupling_boundary(	int imax, int jmax, double dx, double dy, 
+							double *heatflux, double **TEMP, int **FLAG)
 {
 	//precice.readBlockScalarData(temperatureID, num_coupling_cells, vertexIDs, heatflux); shift this to main as well
 	count = 0;
-	for(int j=0; j<=jmax; j++){ //left boundary
+	for(int j=0; j<jmax; j++){ //left boundary
 		if(flag[i][j]&(1<<4)){
-			TEMP[1][j]= TEMP[0][j]+ dx*(heatflux[count]);
+			TEMP[0][j]= TEMP[1][j]+ dx*(heatflux[count]);
 			count++;
 		}
 		
 	}
-	for(int j=0; j<=jmax; j++){ //Right boundary
+	for(int j=0; j<jmax; j++){ //Right boundary
 		if(flag[i][j]&(1<<4)){
-			TEMP[imax][j]= TEMP[imax+1][j]+ dx*(heatflux[count]);
+			TEMP[imax-1][j]= TEMP[imax-2][j]+ dx*(heatflux[count]);
 			count++;
 		}
 		
 	}
-	for(int i=0; i<=imax; i++){ //Top boundary
+	for(int i=0; i<imax; i++){ //Top boundary
 		if(flag[i][j]&(1<<4)){
-			TEMP[i][jmax]= TEMP[i][jmax+1]+ dy*(heatflux[count]);
+			TEMP[i][jmax-1]= TEMP[i][jmax-2]+ dy*(heatflux[count]);
 			count++;
 		}
 		
 	}
-	for(int j=0; j<=jmax; j++){ //Bottom boundary
+	for(int j=0; j<jmax; j++){ //Bottom boundary
 		if(flag[i][j]&(1<<4)){
-			TEMP[i][1]= TEMP[i][0]+ dy*(heatflux[count]);
+			TEMP[i][0]= TEMP[i][1]+ dy*(heatflux[count]);
 			count++;
 		}
 		
+	}
+	/* -------------------GENERALIZED CASE: Domain TEMPERATURE is set according to the North and South cells --------------------- */
+	count = 0;
+	for(int i = 0; i<imax; i++){
+		for(int j=0; j<jmax; j++){ 
+			
+			/* Setting domain temperature if there is fluid to the north of the coupling cell */
+			if(flag[i][j]&(1<<9 && (B_N(flag[i][j])))){
+				TEMP[i][j]= TEMP[i][j+1]+ dy*(heatflux[count]);
+				count++;	
+			}
+			/* Setting domain temperature if there is fluid to the south of the coupling cell */
+			if(flag[i][j]&(1<<9 && (B_S(flag[i][j])))){
+				TEMP[i][j]= TEMP[i][j-1]+ dy*(heatflux[count]);
+				count++;
+			}
+
+		}
 	}
 }
 
-	
+write_checkpoint(	double time, double **U, double **V, double **TEMP, 
+					double *time_cp, double **U_cp, double **V_cp, double **TEMP_cp, 
+					int imax, int jmax){
+
+	time_cp = time;
+
+	for(int i=0; i<imax; i++){
+		for(int j=0; j<jmax; j++){
+			U_cp[i][j]		= U[i][j];
+			V_cp[i][j]		= V[i][j];
+			TEMP_cp[i][j] 	= TEMP[i][j];
+		}
+	}
+}
+
+
+void restore_checkpoint(double *time, double **U, double **V, double **TEMP,
+						double time_cp, double **U_cp, double **V_cp, double **TEMP_cp,
+						int imax, int jmax){
+
+	time = time_cp;
+
+	for(int i=0; i<imax; i++){
+		for(int j=0; j<jmax; j++){
+			U[i][j]		= U_cp[i][j];
+			V[i][j]		= V_cp[i][j];
+			TEMP[i][j] 	= TEMP_cp[i][j];
+		}
+	}
+}
