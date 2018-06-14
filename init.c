@@ -28,7 +28,14 @@ void read_parameters( const char *szFileName,       /* name of the file */
 		    double *beta,
 		    double *dx,                /* length of a cell x-dir. */
 		    double *dy,               /* length of a cell y-dir. */
-		    char *geometry
+		    double *x_origin,
+		    double *y_origin,
+		    char *geometry,
+		    char *precice_config,
+		    char *participant_name,
+		    char *mesh_name,
+		    char *read_data_name,
+		    char *write_data_name
 
 )           
 {
@@ -62,9 +69,18 @@ void read_parameters( const char *szFileName,       /* name of the file */
 			READ_DOUBLE( szFileName, *T_h );
 			READ_DOUBLE( szFileName, *T_c );
 			READ_DOUBLE( szFileName, *beta );
+			READ_DOUBLE( szFileName, *x_origin);
+			READ_DOUBLE( szFileName, *y_origin);
+
 	
 			//READ_STRING( szFileName, problem);
 			READ_STRING( szFileName, geometry);
+
+			READ_STRING( szFileName, precice_config);
+			READ_STRING( szFileName, participant_name);
+			READ_STRING( szFileName, mesh_name);
+			READ_STRING( szFileName, read_data_name);
+			READ_STRING( szFileName, write_data_name);
 
 			*dx = *xlength / (double)(*imax);
 			*dy = *ylength / (double)(*jmax);
@@ -186,24 +202,28 @@ void init_flag( char* geometry, int imax, int jmax, int **flag)
 			flag[i][j] = 0;
 
 			switch(pic[i][j]){
-				case 0: //fluid
+				case 0: //no-slip
 				flag[i][j] = 1<<1;
 				break;
 
-				case 1: //no-slip
+				case 1: //free-slip
 				flag[i][j] = 1<<2;
 				break;
 
-				case 2: //free-slip
+				case 2: //outflow
 				flag[i][j] = 1<<3;
 				break;
 
-				case 3: //outflow
+				case 3: //inflow
 				flag[i][j] = 1<<4;
 				break;
 
-				case 4: //inflow
+				case 4: //fluid
 				flag[i][j] = 1<<0;
+				break;
+
+				case 9: //coupling
+				flag[i][j] = (1<<9) | (1<<1);
 				break;
 			}
 
@@ -231,4 +251,23 @@ void init_flag( char* geometry, int imax, int jmax, int **flag)
 	printf("Flags set according .pgm file...\n \n");
 
 
+}
+
+int num_coupling( char* geometry, int imax, int jmax)
+{
+	int **pic = imatrix(0,imax-1,0,jmax-1);
+	pic = read_pgm(geometry);
+
+	int counter = 0;
+
+		for (int i=0; i<imax; i++) {
+		for (int j=0; j<jmax; j++) {
+
+		if (pic[i][j] == 9)
+		counter counter+1;
+
+					   }	
+					   }
+
+return counter;
 }
