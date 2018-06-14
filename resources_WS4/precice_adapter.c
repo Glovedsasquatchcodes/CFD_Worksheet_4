@@ -272,7 +272,7 @@ void set_coupling_boundary(	int imax, int jmax, double dx, double dy,
 	}
 }
 
-write_checkpoint(	double time, double **U, double **V, double **TEMP, 
+void write_checkpoint(	double time, double **U, double **V, double **TEMP, 
 					double *time_cp, double **U_cp, double **V_cp, double **TEMP_cp, 
 					int imax, int jmax){
 
