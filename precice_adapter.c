@@ -1,11 +1,12 @@
 #include "precice_adapter.h"
 #include "boundary_val.h"
+#include <stdlib.h>
+#include "adapters/c/SolverInterfaceC.h"
 
-int *precice_set_interface_vertices(int imax, int jmax, double dx, double dy, double x_origin, double y_origin,
+int *precice_set_interface_vertices(int imax, int jmax, double dx, double dy, 
+									double x_origin, double y_origin,
                                     int num_coupling_cells, int meshID, int **FLAG){
-	int dimension   = precice.getDimension();
-   // int getMeshID   = precice.getMeshID("FluidMesh");
-<<<<<<< HEAD
+	int dimension   = 3;//precicec_getDimension();
     int* vertexIDs  = (int*)malloc(num_coupling_cells*sizeof(int));
 
 
@@ -14,76 +15,7 @@ int *precice_set_interface_vertices(int imax, int jmax, double dx, double dy, do
 
     int coupledcellcount = 0;
 	for(int j=0; j<jmax; j++){ //left boundary
-		if(flag[0][j]&(1<<4)){
-=======
-    int* vertexIDs  = new int[num_coupling_cells];
-
-
-    /* -------------------------CASE 1 (APPROACH 1) BEGINS------------------------------ */
-	double* vertices = new double[num_coupling_cells*dimension];
-
-    double* coords = new double[dimension];
-
-    int coupledcellcount = 0;
-	for(int j=0; j<jmax; j++){ //left boundary
-		if(flag[i][j]&(1<<4)){
-            vertices[dimension*coupledcellcount]     = x_origin + (0 - 0.5)*dx;
-            vertices[dimension*coupledcellcount + 1] = y_origin + (j - 0.5)*dy;
-			vertices[dimension*coupledcellcount + 2] = 0;
-            coords = (vertices + dimension*coupledcellcount);
-
-			precice.setMeshVertices(meshID, num_coupling_cells, coords, (vertexIDs + coupledcellcount));
-			coupledcellcount++;
-		}
-		
-	}
-	for(int j=0; j<jmax; j++){ //Right boundary
-		if(flag[i][j]&(1<<4)){
-            vertices[dimension*coupledcellcount]     = x_origin + (imax - 0.5)*dx;
-            vertices[dimension*coupledcellcount + 1] = y_origin + (j - 0.5)*dy;
-			vertices[dimension*coupledcellcount + 2] = 0;
-            coords = (vertices + dimension*coupledcellcount);
-
-			precice.setMeshVertices(meshID, num_coupling_cells, coords, (vertexIDs + coupledcellcount));
-			coupledcellcount++;
-		}
-		
-	}
-	for(int i=0; i<imax; i++){ //Top boundary
-		if(flag[i][j]&(1<<4)){
-            vertices[dimension*coupledcellcount]     = x_origin + (i - 0.5)*dx;
-            vertices[dimension*coupledcellcount + 1] = y_origin + (jmax - 0.5)*dy;
-			vertices[dimension*coupledcellcount + 2] = 0;
-            coords = (vertices + dimension*coupledcellcount);
-
-			precice.setMeshVertices(meshID, num_coupling_cells, coords, (vertexIDs + coupledcellcount));
-			coupledcellcount++;
-		}
-		
-	}
-	for(int i=0; i<imax; i++){ //Bottom boundary
-		if(flag[i][j]&(1<<4)){
-            vertices[dimension*coupledcellcount]     = x_origin + (i - 0.5)*dx;
-            vertices[dimension*coupledcellcount + 1] = y_origin + (0 - 0.5)*dy;
-			vertices[dimension*coupledcellcount + 2] = 0;;
-            coords = (vertices + dimension*coupledcellcount);
-
-			precice.setMeshVertices(meshID, num_coupling_cells, coords, (vertexIDs + coupledcellcount));
-			coupledcellcount++;
-		}
-		
-	}
-	/* -------------------------CASE 1 (APPROACH 1) ENDS------------------------------ */
-
-
-
-    /* -------------------------CASE 1 (APPROACH 2) BEGINS------------------------------ */
-	double* vertices = new double[num_coupling_cells*dimension];
-
-    int coupledcellcount = 0;
-	for(int j=0; j<jmax; j++){ //left boundary
-		if(flag[i][j]&(1<<4)){
->>>>>>> fb41166506a2ca9a696272b20c9b366c3268a48b
+		if(FLAG[0][j]&(1<<9)){
             vertices[dimension*coupledcellcount]     = x_origin + (0 - 0.5)*dx;
             vertices[dimension*coupledcellcount + 1] = y_origin + (j - 0.5)*dy;
 			vertices[dimension*coupledcellcount + 2] = 0;
@@ -92,12 +24,8 @@ int *precice_set_interface_vertices(int imax, int jmax, double dx, double dy, do
 		
 	}
 	for(int j=0; j<jmax; j++){ //Right boundary
-<<<<<<< HEAD
-		if(flag[imax][j]&(1<<4)){
-=======
-		if(flag[i][j]&(1<<4)){
->>>>>>> fb41166506a2ca9a696272b20c9b366c3268a48b
-            vertices[dimension*coupledcellcount]     = x_origin + (imax - 0.5)*dx;
+		if(FLAG[imax-1][j]&(1<<9)){
+            vertices[dimension*coupledcellcount]     = x_origin + (imax -1 - 0.5)*dx;
             vertices[dimension*coupledcellcount + 1] = y_origin + (j - 0.5)*dy;
 			vertices[dimension*coupledcellcount + 2] = 0;
 			coupledcellcount++;
@@ -105,24 +33,16 @@ int *precice_set_interface_vertices(int imax, int jmax, double dx, double dy, do
 		
 	}
 	for(int i=0; i<imax; i++){ //Top boundary
-<<<<<<< HEAD
-		if(flag[i][jmax]&(1<<4)){
-=======
-		if(flag[i][j]&(1<<4)){
->>>>>>> fb41166506a2ca9a696272b20c9b366c3268a48b
+		if(FLAG[i][jmax-1]&(1<<9)){
             vertices[dimension*coupledcellcount]     = x_origin + (i - 0.5)*dx;
-            vertices[dimension*coupledcellcount + 1] = y_origin + (jmax - 0.5)*dy;
+            vertices[dimension*coupledcellcount + 1] = y_origin + (jmax - 1 - 0.5)*dy;
 			vertices[dimension*coupledcellcount + 2] = 0;
 			coupledcellcount++;
 		}
 		
 	}
 	for(int i=0; i<imax; i++){ //Bottom boundary
-<<<<<<< HEAD
-		if(flag[i][0]&(1<<4)){
-=======
-		if(flag[i][j]&(1<<4)){
->>>>>>> fb41166506a2ca9a696272b20c9b366c3268a48b
+		if(FLAG[i][0]&(1<<9)){
             vertices[dimension*coupledcellcount]     = x_origin + (i - 0.5)*dx;
             vertices[dimension*coupledcellcount + 1] = y_origin + (0 - 0.5)*dy;
 			vertices[dimension*coupledcellcount + 2] = 0;
@@ -130,53 +50,21 @@ int *precice_set_interface_vertices(int imax, int jmax, double dx, double dy, do
 		}
 		
 	}
-	precice.setMeshVertices(meshID, num_coupling_cells, vertices, vertexIDs);
-<<<<<<< HEAD
+	precicec_setMeshVertices(meshID, num_coupling_cells, vertices, vertexIDs);
 	/* -------------------------CASE 1 (APPROACH 2) ENDS------------------------------ */
 
 
+    
 
-	/* -------------------CASE 2 GENERALIZED SCAN (APPROACH 2) BEGINS--------------------- */
+	/* -------------------CASE 2 GENERALIZED SCAN (APPROACH 2) BEGINS--------------------- 
     double* vertices = (double*)malloc(num_coupling_cells*dimension*sizeof(double));
-=======
-	/* -------------------------CASE 1 (APPROACH 1) ENDS------------------------------ */
-
-
-    /* -------------------CASE 2 GENERALIZED SCAN (APPROACH 1) BEGINS--------------------- */
-    double* vertices = new double[num_coupling_cells*dimension];
-
-    double* coords = new double[dimension];
 
     int coupledcellcount = 0;
 	for(int i = 0; i<imax; i++){
 		for(int j=0; j<jmax; j++){ 
 			
-			/* scanning from bottom to top, left to right */
-			if(flag[i][j]&(1<<9 && (B_N(flag[i][j]) | B_S(flag[i][j])))){
-				vertices[dimension*coupledcellcount]     = x_origin + (i - 0.5)*dx;
-				vertices[dimension*coupledcellcount + 1] = y_origin + (j - 0.5)*dy;
-				vertices[dimension*coupledcellcount + 2] = 0;
-				coords = (vertices + dimension*coupledcellcount);
-
-				precice.setMeshVertices(meshID, num_coupling_cells, coords, (vertexIDs + coupledcellcount));
-				coupledcellcount++;
-			}
-
-		}
-	}
-    /* -------------------CASE 2 GENERALIZED SCAN (APPROACH 1) BEGINS--------------------- */
-
-
-	/* -------------------CASE 2 GENERALIZED SCAN (APPROACH 2) BEGINS--------------------- */
-    double* vertices = new double[num_coupling_cells*dimension];
->>>>>>> fb41166506a2ca9a696272b20c9b366c3268a48b
-
-    int coupledcellcount = 0;
-	for(int i = 0; i<imax; i++){
-		for(int j=0; j<jmax; j++){ 
-			
-			/* scanning from bottom to top, left to right */
-			if(flag[i][j]&(1<<9 && (B_N(flag[i][j]) | B_S(flag[i][j])))){
+			// scanning from bottom to top, left to right 
+			if(FLAG[i][j]&(1<<9 && (B_N(FLAG[i][j]) | B_S(FLAG[i][j])))){
 				vertices[dimension*coupledcellcount]     = x_origin + (i - 0.5)*dx;
 				vertices[dimension*coupledcellcount + 1] = y_origin + (j - 0.5)*dy;
 				vertices[dimension*coupledcellcount + 2] = 0;
@@ -188,39 +76,39 @@ int *precice_set_interface_vertices(int imax, int jmax, double dx, double dy, do
 	}
 	precice.setMeshVertices(meshID, num_coupling_cells, vertices, vertexIDs);
 				
-    /* -------------------CASE 2 GENERALIZED SCAN (APPROACH 2) BEGINS--------------------- */
-	free(coords);
+     -------------------CASE 2 GENERALIZED SCAN (APPROACH 2) BEGINS--------------------- */
 	return vertexIDs;
 	
 }
 
-void precice_write_temperature(int imax, int jmax, int num_coupling_cells, double *temperature, int *vertexIDs,
-                               int temperatureID, double **TEMP, int **FLAG)
+void precice_write_temperature(	int imax, int jmax, int num_coupling_cells, 
+								double *temperature, int *vertexIDs,
+                               	int temperatureID, double **TEMP, int **FLAG)
 {
-	count = 0;
+	int count = 0;
 	for(int j=0; j<jmax; j++){ //left boundary
-		if(flag[i][j]&(1<<4)){
+		if(FLAG[0][j]&(1<<9)){
 			temperature[count] = TEMP[1][j];
 			count++;
 		}
 		
 	}
 	for(int j=0; j<jmax; j++){ //Right boundary
-		if(flag[i][j]&(1<<4)){
+		if(FLAG[imax-1][j]&(1<<9)){
 			temperature[count] = TEMP[imax-2][j];
 			count++;
 		}
 		
 	}
 	for(int i=0; i<imax; i++){ //Top boundary
-		if(flag[i][j]&(1<<4)){
+		if(FLAG[i][jmax-1]&(1<<9)){
 			temperature[count] = TEMP[i][jmax-2];
 			count++;
 		}
 		
 	}
-	for(int j=0; j<jmax; j++){ //Bottom boundary
-		if(flag[i][j]&(1<<4)){
+	for(int i=0; i<imax; i++){ //Bottom boundary
+		if(FLAG[i][0]&(1<<9)){
 			temperature[count] = TEMP[i][1];
 			count++;
 		}
@@ -228,87 +116,87 @@ void precice_write_temperature(int imax, int jmax, int num_coupling_cells, doubl
 	}
 
 	
- 	/* -------------------GENERALIZED CASE: preCICE TEMPERATURE is set according to the North and South cells --------------------- */
+ 	/* -------------------GENERALIZED CASE: preCICE TEMPERATURE is set according to the North and South cells --------------------- 
 	count = 0;
 	for(int i = 0; i<imax; i++){
 		for(int j=0; j<jmax; j++){ 
 
 			
-			/* Setting preCICE temperature if there is fluid to the north of the coupling cell */
-			if(flag[i][j]&(1<<9 && (B_N(flag[i][j])))){
+			// Setting preCICE temperature if there is fluid to the north of the coupling cell
+			if(FLAG[i][j]&(1<<9 && (B_N(FLAG[i][j])))){
 				temperature[count] = TEMP[i][j+1];
 				count++;
 			}
-			/* Setting preCICE temperature if there is fluid to the south of the coupling cell */
-			if(flag[i][j]&(1<<9 && (B_S(flag[i][j])))){
+			// Setting preCICE temperature if there is fluid to the south of the coupling cell
+			if(FLAG[i][j]&(1<<9 && (B_S(FLAG[i][j])))){
 				temperature[count] = TEMP[i][j-1];
 				count++;
 			}
 
 		}
-	}
-	precice.writeBlockScalarData(temperatureID, num_coupling_cells, vertexIDs, temperature);
+	}*/
+	precicec_writeBlockScalarData(temperatureID, num_coupling_cells, vertexIDs, temperature);
 	
 }
 
-void set_coupling_boundary(int imax, int jmax, double dx, double dy, double *heatflux, double **TEMP, int **FLAG)
+void set_coupling_boundary(	int imax, int jmax, double dx, double dy, 
+							double *heatflux, double **TEMP, int **FLAG)
 {
 	//precice.readBlockScalarData(temperatureID, num_coupling_cells, vertexIDs, heatflux); shift this to main as well
-	count = 0;
+	int count = 0;
 	for(int j=0; j<jmax; j++){ //left boundary
-		if(flag[i][j]&(1<<4)){
+		if(FLAG[0][j]&(1<<9)){
 			TEMP[0][j]= TEMP[1][j]+ dx*(heatflux[count]);
 			count++;
 		}
 		
 	}
 	for(int j=0; j<jmax; j++){ //Right boundary
-		if(flag[i][j]&(1<<4)){
+		if(FLAG[imax-1][j]&(1<<9)){
 			TEMP[imax-1][j]= TEMP[imax-2][j]+ dx*(heatflux[count]);
 			count++;
 		}
 		
 	}
 	for(int i=0; i<imax; i++){ //Top boundary
-		if(flag[i][j]&(1<<4)){
+		if(FLAG[i][jmax-1]&(1<<9)){
 			TEMP[i][jmax-1]= TEMP[i][jmax-2]+ dy*(heatflux[count]);
 			count++;
 		}
 		
 	}
-	for(int j=0; j<jmax; j++){ //Bottom boundary
-		if(flag[i][j]&(1<<4)){
+	for(int i=0; i<jmax; i++){ //Bottom boundary
+		if(FLAG[i][0]&(1<<9)){
 			TEMP[i][0]= TEMP[i][1]+ dy*(heatflux[count]);
 			count++;
 		}
 		
 	}
-	/* -------------------GENERALIZED CASE: Domain TEMPERATURE is set according to the North and South cells --------------------- */
+	/* -------------------GENERALIZED CASE: Domain TEMPERATURE is set according to the North and South cells ---------------------
 	count = 0;
 	for(int i = 0; i<imax; i++){
 		for(int j=0; j<jmax; j++){ 
 			
-			/* Setting domain temperature if there is fluid to the north of the coupling cell */
-			if(flag[i][j]&(1<<9 && (B_N(flag[i][j])))){
+			// Setting domain temperature if there is fluid to the north of the coupling cell
+			if(FLAG[i][j]&(1<<9 && (B_N(FLAG[i][j])))){
 				TEMP[i][j]= TEMP[i][j+1]+ dy*(heatflux[count]);
-				count++;	
+				count++;
+				
 			}
-			/* Setting domain temperature if there is fluid to the south of the coupling cell */
-			if(flag[i][j]&(1<<9 && (B_S(flag[i][j])))){
+			// Setting domain temperature if there is fluid to the south of the coupling cell
+			if(FLAG[i][j]&(1<<9 && (B_S(FLAG[i][j])))){
 				TEMP[i][j]= TEMP[i][j-1]+ dy*(heatflux[count]);
 				count++;
 			}
 
 		}
-	}
+	}*/
 }
-
-<<<<<<< HEAD
 void write_checkpoint(	double time, double **U, double **V, double **TEMP, 
 					double *time_cp, double **U_cp, double **V_cp, double **TEMP_cp, 
 					int imax, int jmax){
 
-	time_cp = time;
+	time_cp = &time;
 
 	for(int i=0; i<imax; i++){
 		for(int j=0; j<jmax; j++){
@@ -324,19 +212,17 @@ void restore_checkpoint(double *time, double **U, double **V, double **TEMP,
 						double time_cp, double **U_cp, double **V_cp, double **TEMP_cp,
 						int imax, int jmax){
 
-	time = time_cp;
+	time = &time_cp;
 
 	for(int i=0; i<imax; i++){
 		for(int j=0; j<jmax; j++){
 			U[i][j]		= U_cp[i][j];
 			V[i][j]		= V_cp[i][j];
-			TEMP[i][j]  = TEMP_cp[i][j];
+			TEMP[i][j] 	= TEMP_cp[i][j];
 		}
-	}
+	}	
 }
 
-=======
->>>>>>> fb41166506a2ca9a696272b20c9b366c3268a48b
 	
 
 	

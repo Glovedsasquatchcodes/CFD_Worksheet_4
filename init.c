@@ -264,7 +264,7 @@ int num_coupling( char* geometry, int imax, int jmax)
 		for (int j=0; j<jmax; j++) {
 
 		if (pic[i][j] == 9)
-		counter = counter+1;
+		counter= counter+1;
 
 					   }	
 					   }
