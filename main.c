@@ -47,18 +47,11 @@
  * - calculate_uv() Calculate the velocity at the next time step.
  */
 int main(int argc, char* argv[]){
-			int select=0;
 			char *problem = argv[1];
 			char *filename = malloc(strlen(problem) + 5);
 			strcpy(filename, problem);
 	                strcat(filename, ".dat");
 
-			if(strcmp(problem, "karman_vortex")==0) select=1;
-			if(strcmp(problem, "step_flow")==0) select=2;
-			if(strcmp(problem, "natural_convection")==0) select=3;
-			if(strcmp(problem, "fluid_trap")==0) select=4;
-			if(strcmp(problem, "rb_convection")==0) select=5;
-			
 			//define parameter variables
 			double Re;                /* reynolds number   */
 			double UI;                /* velocity x-direction */
@@ -82,8 +75,8 @@ int main(int argc, char* argv[]){
 			double dt_value;           /* time for output */
 			double Pr;
 			double TI;
-			double T_h;
-			double T_c;
+			//double T_h;
+			//double T_c;
 			double beta;
 			double x_origin;
 		        double y_origin;
@@ -95,19 +88,15 @@ int main(int argc, char* argv[]){
 		        char *write_data_name;
 
 			//Read and assign the parameter values from file
-			read_parameters(filename, &imax, &jmax, &xlength, &ylength, &dt, &t_end, &tau, &dt_value, &eps, &omg, &alpha, &itermax,&GX, &GY, &Re, &Pr, &UI, &VI, &PI, &TI, &T_h, &T_c, &beta, &dx, &dy, &x_origin, &y_origin, geometry, precice_config, participant_name, mesh_name, read_data_name, write_data_name);
+			read_parameters(filename, &imax, &jmax, &xlength, &ylength, &dt, &t_end, &tau, &dt_value, &eps, &omg, &alpha, &itermax,&GX, &GY, &Re, &Pr, &UI, &VI, &PI, &TI, &beta, &dx, &dy, &x_origin, &y_origin, geometry, precice_config, participant_name, mesh_name, read_data_name, write_data_name);
 
-			//T_flag =1 => Flag for heat transfer problems to include T_flag equations for solving
-			int T_flag = 1;
-			if(((select==1)||(select==2))){
-				if( (Pr!=0)||(TI!=0)||(T_h!=0)||(T_c!=0)||(beta!=0) ){
-					char szBuff[80];
-					sprintf( szBuff, "Input file incompatible. Please check .dat file. \n");
-					ERROR( szBuff );
-				}
-				else  T_flag = 0;
-			}
-
+			geometry = "heated-plate.pgm";			
+			printf("Name of geometry: %s\n", geometry);
+			precice_config = "precice-configs/precice_config_plate_explicit.xml";
+			participant_name = "Fluid";
+			mesh_name = "Fluid-Mesh";
+			read_data_name = "Heat-Flux";
+			write_data_name = "Temperature";
 
 			//Allocate the matrices for P(pressure), U(velocity_x), V(velocity_y), F, and G on heap
 			printf("Allocate the matrices for P(pressure), U(velocity_x), V(velocity_y), F, and G on heap... \n");
@@ -119,16 +108,15 @@ int main(int argc, char* argv[]){
 			double **RS = matrix(0, imax-1, 0, jmax-1);
 			int **flag = imatrix(0, imax-1, 0, jmax-1);
 			double **T;
-			if(T_flag){	
-				T = matrix(0, imax-1, 0, jmax-1);
-			}
+			T = matrix(0, imax-1, 0, jmax-1);
+			int num_coupling;	
 			printf("Matrices allocated... \n \n");
 
 			//Flag Initialization
-			init_flag(geometry, imax, jmax, flag);
-
+			init_flag(geometry, imax, jmax, flag, &num_coupling);
+			
 			//Initialize the U, V and P
-			init_uvp(UI, VI, PI, TI, imax, jmax, U, V, P, T, flag, T_flag);
+			init_uvp(UI, VI, PI, TI, imax, jmax, U, V, P, T, flag);
 
 
 			//Make solution folder
@@ -145,47 +133,54 @@ int main(int argc, char* argv[]){
 			// Algorithm starts from here
 			printf("Alogrithm started........\n");
 			double t=0; int n=0; int n1=0;
+			printf("Debug_1\n");
 
 			// initialize preCICE
 			precicec_createSolverInterface(participant_name, precice_config, 0, 1);
+			printf("Debug_2\n");
 			int dim = precicec_getDimensions();
+
+			printf("Debug_3\n");
 			
 			// define coupling mesh
 			int meshID = precicec_getMeshID(mesh_name);
-			int num_coupling_cells = num_coupling(geometry,imax,jmax);//determine no. of coupling cells 					
-    			int* vertexIDs = precice_set_interface_vertices(imax,jmax, dx, dy, x_origin, y_origin, num_coupling_cells, meshID, flag); // get coupling cell ids
+			printf("Debug_4\n");
+			//int num_coupling_cells = num_coupling;//determine no. of coupling cells 
+			printf("Debug_5\n");					
+    			int* vertexIDs = precice_set_interface_vertices(imax,jmax, dx, dy, x_origin, y_origin, num_coupling, meshID, flag); // get coupling cell ids
+			printf("Debug_11\n");
 
 			// define Dirichlet part of coupling written by this solver
 			int temperatureID = precicec_getDataID(write_data_name, meshID);
-			double* temperatureCoupled = (double*) malloc(sizeof(double) * num_coupling_cells);
+			double* temperatureCoupled = (double*) malloc(sizeof(double) * num_coupling);
+
+			printf("Debug_12\n");
 
 			// define Neumann part of coupling read by this solver
 			int heatFluxID = precicec_getDataID(read_data_name, meshID);
-			double* heatfluxCoupled = (double*) malloc(sizeof(double) * num_coupling_cells);
+			double* heatfluxCoupled = (double*) malloc(sizeof(double) * num_coupling);
 				
 			// call precicec_initialize()
 			double precice_dt = precicec_initialize();
 
 			// initialize data at coupling interface
-			precice_write_temperature(imax,jmax,num_coupling_cells,temperatureCoupled,vertexIDs,temperatureID,T,flag); 
+			precice_write_temperature(imax,jmax,num_coupling,temperatureCoupled,vertexIDs,temperatureID,T,flag); 
 			precicec_initialize_data(); // synchronize with OpenFOAM
-			precicec_readBlockScalarData(heatFluxID, num_coupling_cells, vertexIDs, heatfluxCoupled);//read heatfluxCoupled	changed vertexsize to num_coupling_cells	
+			precicec_readBlockScalarData(heatFluxID, num_coupling, vertexIDs, heatfluxCoupled);//read heatfluxCoupled	changed vertexsize to num_coupling_cells	
 
 			while (precicec_isCouplingOngoing()) {
 	
-				calculate_dt(Re,tau,&dt,dx,dy,imax,jmax, U, V, Pr, T_flag);
-				dt = min(dt, precice_dt); // change solver_dt to dt
-
-				set_coupling_boundary(imax, jmax, dx, dy, heatfluxCoupled, T, flag);							
-				boundaryvalues(imax, jmax, U, V, flag);
-
-				if(T_flag){
-					calculate_temp(T, Pr, Re, imax, jmax, dx, dy, dt, alpha, U, V, flag, TI, T_h, T_c, select);
-				}
+				calculate_dt(Re,tau,&dt,dx,dy,imax,jmax, U, V, Pr);
+				dt = fmin(dt, precice_dt); // change solver_dt to dt
 
 				spec_boundary_val(imax, jmax, U, V, flag);
 
-				calculate_fg(Re,GX,GY,alpha,dt,dx,dy,imax,jmax,U,V,F,G,flag, beta, T, T_flag);
+				boundaryvalues(imax, jmax, U, V, flag);
+
+				set_coupling_boundary(imax, jmax, dx, dy, heatfluxCoupled, T, flag); 							
+				calculate_temp(T, Pr, Re, imax, jmax, dx, dy, dt, alpha, U, V, flag, TI);
+				
+				calculate_fg(Re,GX,GY,alpha,dt,dx,dy,imax,jmax,U,V,F,G,flag, beta, T);
 									
 				calculate_rs(dt,dx,dy,imax,jmax,F,G,RS,flag);
 											
@@ -207,14 +202,14 @@ int main(int argc, char* argv[]){
 
 				calculate_uv(dt,dx,dy,imax,jmax,U,V,F,G,P,flag);
 			
-				precice_write_temperature(imax,jmax,num_coupling_cells,temperatureCoupled,vertexIDs,temperatureID,T, flag);
+				precice_write_temperature(imax,jmax,num_coupling,temperatureCoupled,vertexIDs,temperatureID,T, flag);
 				precice_dt = precicec_advance(dt); // advance coupling
-				precicec_readBlockScalarData(heatFluxID, num_coupling_cells, vertexIDs, heatfluxCoupled); //changed vertexsize to num_coupling_cells	
+				precicec_readBlockScalarData(heatFluxID, num_coupling, vertexIDs, heatfluxCoupled); //changed vertexsize to num_coupling_cells	
 
-				reset_obstacles(U, V, P, T, flag, imax, jmax,T_flag);
+				reset_obstacles(U, V, P, T, flag, imax, jmax);
 	
 				if ((t >= n1*dt_value)&&(t!=0.0)){
-					write_vtkFile(sol_directory ,n ,xlength ,ylength ,imax-2 ,jmax-2,dx ,dy ,U ,V ,P,T,T_flag);
+					write_vtkFile(sol_directory ,n ,xlength ,ylength ,imax-2 ,jmax-2,dx ,dy ,U ,V ,P,T);
 					printf("Writing Solutions at %f seconds in the file \n",n1*dt_value);
 				    	n1=n1+ 1;
 				    	continue;
@@ -234,9 +229,8 @@ int main(int argc, char* argv[]){
 			free_matrix( G, 0, imax-1, 0, jmax-1);
 			free_matrix(RS, 0, imax-1, 0, jmax-1);
 			free_imatrix(flag, 0, imax-1, 0, jmax-1);
-			if(T_flag) { 
-				free_matrix(T, 0, imax-1, 0, jmax-1);
-			}
+			free_matrix(T, 0, imax-1, 0, jmax-1);
+			
 			
 
 			printf("End \n");

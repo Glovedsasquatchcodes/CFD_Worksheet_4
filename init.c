@@ -23,8 +23,6 @@ void read_parameters( const char *szFileName,       /* name of the file */
                     double *VI,                /* velocity y-direction */
                     double *PI,                /* pressure */
        		    double *TI,
-		    double *T_h,
-		    double *T_c,
 		    double *beta,
 		    double *dx,                /* length of a cell x-dir. */
 		    double *dy,               /* length of a cell y-dir. */
@@ -66,21 +64,23 @@ void read_parameters( const char *szFileName,       /* name of the file */
 			READ_DOUBLE( szFileName, *VI );
 			READ_DOUBLE( szFileName, *PI );
 			READ_DOUBLE( szFileName, *TI );
-			READ_DOUBLE( szFileName, *T_h );
-			READ_DOUBLE( szFileName, *T_c );
 			READ_DOUBLE( szFileName, *beta );
 			READ_DOUBLE( szFileName, *x_origin);
 			READ_DOUBLE( szFileName, *y_origin);
 
 	
 			//READ_STRING( szFileName, problem);
-			READ_STRING( szFileName, geometry);
-
-			READ_STRING( szFileName, precice_config);
-			READ_STRING( szFileName, participant_name);
-			READ_STRING( szFileName, mesh_name);
-			READ_STRING( szFileName, read_data_name);
-			READ_STRING( szFileName, write_data_name);
+			//READ_STRING( szFileName, geometry);
+			//geometry = "*.pgm";			
+			printf("precong\n");
+			//READ_STRING( szFileName, precice_config);
+			printf("precong\n");
+			//participant_name = "Fluid";
+			printf("precong 2\n");
+			//READ_STRING( szFileName, mesh_name);
+			//READ_STRING( szFileName, read_data_name);
+			//READ_STRING( szFileName, write_data_name);
+			//READ_STRING( szFileName, participant_name);
 
 			*dx = *xlength / (double)(*imax);
 			*dy = *ylength / (double)(*jmax);
@@ -90,7 +90,7 @@ void read_parameters( const char *szFileName,       /* name of the file */
 }
 
 
-void init_uvp(double UI, double VI, double PI, double TI, int imax, int jmax,double** U, double** V, double** P, double** T, int** flag,int include_temp){
+void init_uvp(double UI, double VI, double PI, double TI, int imax, int jmax,double** U, double** V, double** P, double** T, int** flag){
 	printf("Initialization of U,V,P,T ... \n");
 	
 	for(int i=0; i<imax; i++){
@@ -100,8 +100,7 @@ void init_uvp(double UI, double VI, double PI, double TI, int imax, int jmax,dou
 				U[i][j] = UI;
 				V[i][j] = VI;
 				P[i][j] = PI;
-            		if (include_temp)
-            		{ T[i][j] =TI; }
+            			T[i][j] =TI; 
 			}
 		}
 	}
@@ -109,7 +108,7 @@ void init_uvp(double UI, double VI, double PI, double TI, int imax, int jmax,dou
 }
 
 int  Fluid(int pic){
-	if((pic == 2)||(pic == 3)||(pic == 4)) {
+	if((pic == 2)||(pic == 3)||(pic == 6)) {
 		return 1;
 	}
 		else {
@@ -131,15 +130,6 @@ void forbid_assert(int imax, int jmax, int **pic)
 {
 int **pic1 = imatrix(0, imax+1, 0, jmax+1);
 init_imatrix( pic1, 0, imax+1, 0, jmax+1, 0); 
-
-/*for (int i = 0; i<=imax+1; i++)
-{
-for(int j=0; j<=jmax+1; j++)
-{
-pic1[i][j]=0;
-}
-}*/
-
 int counter = 0;
 
     for(int i=1; i<=imax; i++)
@@ -158,21 +148,21 @@ int counter = 0;
         {
 
             counter = 0;
-            if(pic1[i][j] != 4 && pic1[i][j] != 3 && pic1[i][j] != 2)
+            if(pic1[i][j] != 6 && pic1[i][j] != 3 && pic1[i][j] != 2)
 	    {
-            if((pic1[i+1][j] == 4) || (pic1[i+1][j] == 3) || (pic1[i+1][j] == 2))
+            if((pic1[i+1][j] == 6) || (pic1[i+1][j] == 3) || (pic1[i+1][j] == 2))
             {
             counter++;   
             }
-            if((pic1[i-1][j] == 4) || (pic1[i-1][j] == 3) || (pic1[i-1][j] == 2))
+            if((pic1[i-1][j] == 6) || (pic1[i-1][j] == 3) || (pic1[i-1][j] == 2))
             {
             counter++;   
             }
-            if((pic1[i][j+1] == 4) || (pic1[i][j+1] == 3) || (pic1[i][j+1] == 2))
+            if((pic1[i][j+1] == 6) || (pic1[i][j+1] == 3) || (pic1[i][j+1] == 2))
             {
             counter++;   
             }
-            if((pic1[i][j-1] == 4) || (pic1[i][j-1] == 3) || (pic1[i][j-1] == 2))
+            if((pic1[i][j-1] == 6) || (pic1[i][j-1] == 3) || (pic1[i][j-1] == 2))
             {
             counter++;   
             }
@@ -188,13 +178,15 @@ int counter = 0;
     }
 }
 
-void init_flag( char* geometry, int imax, int jmax, int **flag)
+void init_flag( char* geometry, int imax, int jmax, int **flag, int *num_coupling)
 {
 	printf("Flags are being set... \n");
 	int **pic = imatrix(0,imax-1,0,jmax-1);
 	pic = read_pgm(geometry);
-
+printf("read pgm");
 	forbid_assert(imax, jmax, pic);
+
+	*num_coupling = 0;
 
 	for (int i=0; i<imax; i++){
 		for (int j=0; j<jmax; j++){
@@ -218,27 +210,28 @@ void init_flag( char* geometry, int imax, int jmax, int **flag)
 				flag[i][j] = 1<<4;
 				break;
 
-				case 4: //fluid
+				case 6: //fluid
 				flag[i][j] = 1<<0;
 				break;
 
-				case 9: //coupling
+				case 4: //coupling
 				flag[i][j] = (1<<9) | (1<<1);
+				(*num_coupling)++;
 				break;
 			}
 
 			if(!Fluid(pic[i][j])){ //set boundaries if not 
 
-				if(i<imax-1 && pic[i+1][j]==4){
+				if(i<imax-1 && pic[i+1][j]==6){
 					flag[i][j] |= 1<<8;
 				}
-				if( i>0 && pic[i-1][j]==4){
+				if( i>0 && pic[i-1][j]==6){
 					flag[i][j] |= 1<<7;
 				}
-				if(j<jmax-1 && pic[i][j+1]==4){
+				if(j<jmax-1 && pic[i][j+1]==6){
 					flag[i][j] |= 1<<5;
 				}
-				if(j>0 && pic[i][j-1]==4){
+				if(j>0 && pic[i][j-1]==6){
 					flag[i][j] |= 1<<6;
 				}
 			}
@@ -246,28 +239,19 @@ void init_flag( char* geometry, int imax, int jmax, int **flag)
 
 		}
 
+
 	}
+
+	for (int i=0; i<imax; i++){
+		for (int j=0; j<jmax; j++){
+		printf("%d ", flag[i][j]);
+}
+printf("\n");
+}
 	free_imatrix(pic, 0,imax-1,0,jmax-1);
 	printf("Flags set according .pgm file...\n \n");
 
 
 }
 
-int num_coupling( char* geometry, int imax, int jmax)
-{
-	int **pic = imatrix(0,imax-1,0,jmax-1);
-	pic = read_pgm(geometry);
 
-	int counter = 0;
-
-		for (int i=0; i<imax; i++) {
-		for (int j=0; j<jmax; j++) {
-
-		if (pic[i][j] == 9)
-		counter= counter+1;
-
-					   }	
-					   }
-
-return counter;
-}
