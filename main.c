@@ -11,6 +11,7 @@
 #include "string.h"
 #include "adapters/c/SolverInterfaceC.h"
 #include "precice_adapter.h"
+#include "adapters/c/Constants.h"
 
 
 /**
@@ -90,9 +91,9 @@ int main(int argc, char* argv[]){
 			//Read and assign the parameter values from file
 			read_parameters(filename, &imax, &jmax, &xlength, &ylength, &dt, &t_end, &tau, &dt_value, &eps, &omg, &alpha, &itermax,&GX, &GY, &Re, &Pr, &UI, &VI, &PI, &TI, &beta, &dx, &dy, &x_origin, &y_origin, geometry, precice_config, participant_name, mesh_name, read_data_name, write_data_name);
 
-			geometry = "heated-plate.pgm";			
+			geometry = "natural_convection.pgm";			
 			printf("Name of geometry: %s\n", geometry);
-			precice_config = "precice-configs/precice_config_plate_explicit.xml";
+			precice_config = "precice-configs/precice_config_plate_implicit.xml";
 			participant_name = "Fluid";
 			mesh_name = "Fluid-Mesh";
 			read_data_name = "Heat-Flux";
@@ -107,8 +108,16 @@ int main(int argc, char* argv[]){
 			double **G = matrix(0, imax-1, 0, jmax-1);
 			double **RS = matrix(0, imax-1, 0, jmax-1);
 			int **flag = imatrix(0, imax-1, 0, jmax-1);
+			double **U_cp = matrix(0, imax-1, 0, jmax-1);
+			double **V_cp = matrix(0, imax-1, 0, jmax-1);
+
 			double **T;
 			T = matrix(0, imax-1, 0, jmax-1);
+
+
+			double **T_cp;
+			T_cp = matrix(0, imax-1, 0, jmax-1);
+
 			int num_coupling;	
 			printf("Matrices allocated... \n \n");
 
@@ -132,12 +141,19 @@ int main(int argc, char* argv[]){
 			
 			// Algorithm starts from here
 			printf("Alogrithm started........\n");
-			double t=0; int n=0; int n1=0;
+			double t=0;
+			double time_cp=0;
+			int n=0;
+			int n1=0;
 			printf("Debug_1\n");
 
 			// initialize preCICE
 			precicec_createSolverInterface(participant_name, precice_config, 0, 1);
 			printf("Debug_2\n");
+
+			const char* coric = precicec_actionReadIterationCheckpoint(); 
+			const char* cowic = precicec_actionWriteIterationCheckpoint();
+
 			int dim = precicec_getDimensions();
 
 			printf("Debug_3\n");
@@ -168,7 +184,15 @@ int main(int argc, char* argv[]){
 			precicec_initialize_data(); // synchronize with OpenFOAM
 			precicec_readBlockScalarData(heatFluxID, num_coupling, vertexIDs, heatfluxCoupled);//read heatfluxCoupled	changed vertexsize to num_coupling_cells	
 
+
+
 			while (precicec_isCouplingOngoing()) {
+				
+				if(precicec_isActionRequired(cowic)){
+					printf("\n \n \n Setting the Check point \n \n \n \n");
+					write_checkpoint(t, U, V, T, &time_cp, U_cp, V_cp, T_cp, imax, jmax); // save checkpoint
+					precicec_fulfilledAction(cowic);
+ 				}
 	
 				calculate_dt(Re,tau,&dt,dx,dy,imax,jmax, U, V, Pr);
 				dt = fmin(dt, precice_dt); // change solver_dt to dt
@@ -199,12 +223,21 @@ int main(int argc, char* argv[]){
 					printf("WARNING: SOR Iteration limit reached before convergence. \n");
 				}
 
-
 				calculate_uv(dt,dx,dy,imax,jmax,U,V,F,G,P,flag);
 			
 				precice_write_temperature(imax,jmax,num_coupling,temperatureCoupled,vertexIDs,temperatureID,T, flag);
 				precice_dt = precicec_advance(dt); // advance coupling
 				precicec_readBlockScalarData(heatFluxID, num_coupling, vertexIDs, heatfluxCoupled); //changed vertexsize to num_coupling_cells	
+				if(precicec_isActionRequired(coric)){ // timestep not converged
+					printf("\n \n \n Restoring the Check point\n \n \n ");
+					restore_checkpoint(&t, U, V, T, time_cp, U_cp, V_cp, T_cp, imax, jmax); // set variables back to checkpoint
+					precicec_fulfilledAction(coric);
+				}
+				else
+				{
+				t =t+ dt;
+				n = n+ 1;
+				}
 
 				reset_obstacles(U, V, P, T, flag, imax, jmax);
 	
@@ -214,8 +247,7 @@ int main(int argc, char* argv[]){
 				    	n1=n1+ 1;
 				    	continue;
 				}
-			t =t+ dt;
-			n = n+ 1;
+
 			}
 
 
